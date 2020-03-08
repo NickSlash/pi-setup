@@ -1,0 +1,25 @@
+#!/bin/bash
+if [[ $EUID -ne 0 ]]; then
+    echo "This script must be run as root"
+    exit 1
+fi
+
+if [ $# -eq 0 ]; then
+        echo "no hostname specified"
+        exit 1
+fi
+
+NEW_NAME=$1
+
+if [[ ! "$NEW_NAME" =~ ^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])$ ]]; then
+	echo "invalid hostname specified"
+	exit 1
+fi
+
+CURRENT_NAME=$(cat /etc/hostname | tr -d "\r\n\r")
+
+echo $NEW_NAME > /etc/hostname
+sed -i "s/127.0.1.1.*$CURRENT_NAME/127.0.1.1\t$NEW_NAME/g" /etc/hosts
+
+echo "set hostname to <$NEW_NAME>"
+exit 0

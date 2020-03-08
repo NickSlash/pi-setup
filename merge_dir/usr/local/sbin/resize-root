@@ -1,0 +1,28 @@
+#!/bin/bash
+if [[ $EUID -ne 0 ]]; then
+    echo "This script must be run as root"
+    exit 1
+fi
+
+ROOT_PART_DEV=$(findmnt /dev/disk/by-label/rootfs -n -o SOURCE) # /dev/sda1
+ROOT_PART_NAME=$(echo "$ROOT_PART_DEV" | cut -d "/" -f 3)        # sda1
+ROOT_DEV_NAME=$(echo /sys/block/*/"${ROOT_PART_NAME}" | cut -d "/" -f 4) # sda
+ROOT_DEV="/dev/${ROOT_DEV_NAME}" # /dev/sda
+ROOT_PART_NUMBER=$(cat "/sys/block/${ROOT_DEV_NAME}/${ROOT_PART_NAME}/partition") # <partition number>
+ROOT_PART_START=$(cat "/sys/block/${ROOT_DEV_NAME}/${ROOT_PART_NAME}/start") # <partition start>
+
+sed -e 's/\s*\([\+0-9a-zA-Z]*\).*/\1/' << EOF | fdisk "${ROOT_DEV}"
+    d   # delete partition
+        n       # create new partition
+        p       # primary partition
+        ${ROOT_PART_NUMBER}     # partition number 1
+        ${ROOT_PART_START}      # first sector position
+                # last sector - default value
+        n       # do not remove signature
+        w       # write partition table
+        q       # quit
+EOF
+
+resize2fs "${ROOT_PART_DEV}"
+
+echo "Root Partition Resized"
